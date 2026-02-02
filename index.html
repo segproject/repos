@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Repostero Alerta PRO</title>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <style>
+        :root {
+            --primary: #ff4757;
+            --primary-light: #ff6b81;
+            --cal-has-order: #ffb8c1; 
+            --success: #2ed573;
+            --warning: #ffa502;
+            --info: #3498db;
+            --text: #2f3542;
+            --text-light: #747d8c;
+            --bg: #f1f2f6;
+            --card-bg: #ffffff;
+            --whatsapp: #25D366;
+            --accent: #5352ed;
+            --note-bg: #fff9db;
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; outline: none; }
+        
+        body { 
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; 
+            margin: 0; padding-bottom: 120px; color: var(--text); background: var(--bg);
+            background-image: radial-gradient(circle at 10% 20%, rgba(255, 71, 87, 0.05) 0%, rgba(255, 255, 255, 0) 90%);
+        }
+
+        header { 
+            padding: 24px 20px; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(15px);
+            position: sticky; top: 0; z-index: 100; border-bottom: 1px solid rgba(255,255,255,0.3);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+        }
+        
+        h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px; background: linear-gradient(45deg, var(--text), var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .cash-summary { color: var(--warning); font-weight: 700; font-size: 15px; margin-top: 6px; }
+
+        .calendar-container { 
+            background: white; 
+            margin: 10px auto; 
+            max-width: 400px; 
+            width: 92%; 
+            border-radius: 24px; 
+            padding: 12px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05); 
+        }
+
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; padding: 0 5px; }
+        .calendar-header h2 { font-size: 15px; font-weight: 800; text-transform: capitalize; margin: 0; }
+        .cal-btn { background: var(--bg); border: none; width: 32px; height: 32px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+        .weekday { font-size: 10px; font-weight: 800; color: var(--text-light); padding-bottom: 5px; }
+        
+        .day { 
+            aspect-ratio: 1; display: flex; align-items: center; justify-content: center; 
+            font-size: 14px; font-weight: 600; border-radius: 50%; cursor: pointer; position: relative; transition: 0.2s;
+            border: 2px solid transparent;
+        }
+        
+        .day.has-orders { 
+            background: var(--cal-has-order); 
+            color: #b33939;
+            box-shadow: 0 4px 10px rgba(255, 184, 193, 0.4); 
+        }
+
+        .day.today { color: var(--accent); font-weight: 900; text-decoration: underline; }
+        .day.selected { border-color: var(--text); }
+        .day.other-month { opacity: 0.1; pointer-events: none; }
+
+        .section-title { padding: 20px 20px 10px; font-size: 13px; font-weight: 800; color: var(--text-light); text-transform: uppercase; letter-spacing: 1px; }
+        
+        .history-toggle {
+            margin: 10px 16px; padding: 15px 20px; background: #e2e8f0; border-radius: 18px;
+            display: flex; justify-content: space-between; align-items: center; cursor: pointer;
+            font-weight: 800; font-size: 13px; color: var(--text); transition: 0.3s;
+        }
+        #list-history { display: none; }
+        #list-history.active { display: block; }
+
+        .order-card { margin: 0 16px 18px; padding: 20px; border-radius: 24px; background: var(--card-bg); box-shadow: 0 10px 25px rgba(0,0,0,0.04); border: 1px solid rgba(255,255,255,0.8); }
+        .client-name { font-size: 18px; font-weight: 800; margin: 0; color: var(--text); }
+        .product-desc { font-size: 15px; margin: 8px 0; color: #4b5563; font-weight: 500; }
+        .note-box { background: var(--note-bg); padding: 10px 12px; border-radius: 12px; font-size: 13px; color: #856404; margin: 10px 0; border-left: 4px solid var(--warning); font-style: italic; }
+        
+        .status-badge { font-weight: 800; font-size: 11px; padding: 6px 12px; border-radius: 12px; text-transform: uppercase; }
+        .paid { background: #e8fdf0; color: var(--success); }
+        .unpaid { background: #fff1f0; color: var(--primary); }
+
+        .actions { display: flex; gap: 8px; margin-top: 15px; align-items: center; flex-wrap: wrap; }
+        .btn { border: none; padding: 10px 14px; border-radius: 14px; font-weight: 700; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+        .btn-wa { background: #eefdf4; color: var(--whatsapp); border: 1px solid #dcfce7; }
+        .btn-check { background: #f1f2f6; border: 1px solid #e2e8f0; }
+        .btn-check.active { background: var(--success); color: white; border-color: var(--success); }
+        .btn-delete { background: #fff1f0; color: var(--primary); width: 40px; height: 40px; border-radius: 12px; justify-content: center; margin-left: auto; }
+
+        .bottom-nav { position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%); width: 92%; max-width: 450px; height: 75px; background: rgba(47, 53, 66, 0.98); backdrop-filter: blur(15px); display: flex; border-radius: 28px; box-shadow: 0 15px 35px rgba(0,0,0,0.3); z-index: 200; align-items: center; padding: 0 10px; }
+        .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; color: #a4b0be; font-size: 10px; font-weight: 700; cursor: pointer; }
+        .nav-item.active { color: white; }
+        .nav-add-btn { position: relative; top: -25px; width: 65px; height: 65px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 25px rgba(255, 71, 87, 0.5); color: white; font-size: 30px; border: 5px solid var(--bg); }
+
+        .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 1000; padding: 20px; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        .modal.active { display: flex; }
+        .modal-content { background: white; width: 100%; max-width: 450px; border-radius: 30px; padding: 25px; max-height: 90vh; overflow-y: auto; }
+        input, textarea { width: 100%; background: #f8fafc; border: 1px solid #e2e8f0; padding: 14px; border-radius: 14px; margin-bottom: 10px; font-size: 16px; }
+
+        /* Reporte Styles */
+        .report-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .report-table td { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🎂 REPOSTERO PRO</h1>
+        <div class="cash-summary" id="cash-banner">💰 COBRAS HOY: S/ 0.00</div>
+    </header>
+
+    <main id="view-hoy">
+        <div class="section-title">🧁 Entregas de Hoy</div>
+        <div id="list-hoy"></div>
+    </main>
+
+    <main id="view-agenda" style="display:none;">
+        <div class="calendar-container">
+            <div class="calendar-header">
+                <button class="cal-btn" onclick="changeMonth(-1)"><i class="ph-bold ph-caret-left"></i></button>
+                <h2 id="calendar-month-year">...</h2>
+                <button class="cal-btn" onclick="changeMonth(1)"><i class="ph-bold ph-caret-right"></i></button>
+            </div>
+            <div class="calendar-grid" id="calendar-grid"></div>
+        </div>
+        <div class="section-title" id="selected-day-label">Pedidos del día</div>
+        <div id="list-agenda"></div>
+    </main>
+
+    <main id="view-pedidos" style="display:none;">
+        <div style="padding: 15px 16px;"><input type="text" id="search-input" placeholder="🔍 Buscar cliente..." oninput="renderAll()"></div>
+        <div class="section-title">🕒 PENDIENTES</div>
+        <div id="list-pending"></div>
+        <div class="history-toggle" onclick="toggleHistory()">
+            <span>✅ VER HISTORIAL (0)</span>
+            <i id="hist-icon" class="ph-bold ph-caret-down"></i>
+        </div>
+        <div id="list-history"></div>
+    </main>
+
+    <main id="view-config" style="display:none;">
+        <div class="section-title">⚙️ CONFIGURACIÓN</div>
+        <div style="padding: 20px;">
+            <label style="display:block; margin-bottom: 5px; font-weight: 700; font-size: 14px;">💱 Símbolo de Moneda:</label>
+            <input type="text" id="conf-currency" placeholder="Ej: S/ o $" oninput="updateCurrency(this.value)">
+            
+            <button class="btn" onclick="showDebtReport()" style="background:var(--info); color:white; width:100%; height:50px; justify-content:center; margin: 20px 0;">📊 Generar Reporte de Cobros</button>
+            
+            <hr style="margin: 20px 0; border: 0; border-top: 1px solid #ddd;">
+            
+            <button class="btn" onclick="exportData()" style="background:var(--text); color:white; width:100%; height:50px; justify-content:center; margin-bottom:15px">💾 Exportar Copia (Backup)</button>
+            <button class="btn" onclick="document.getElementById('import-file').click()" style="background:var(--success); color:white; width:100%; height:50px; justify-content:center; margin-bottom:15px">📂 Importar Datos</button>
+            <input type="file" id="import-file" style="display:none" onchange="importData(event)">
+            <button class="btn" onclick="clearData()" style="background:var(--primary); color:white; width:100%; height:50px; justify-content:center; margin-bottom:15px">⚠️ Borrar Todo</button>
+        </div>
+    </main>
+
+    <nav class="bottom-nav">
+        <div class="nav-item active" onclick="switchTab('hoy', this)"><i class="ph-fill ph-cake"></i>HOY</div>
+        <div class="nav-item" onclick="switchTab('agenda', this)"><i class="ph-bold ph-calendar"></i>AGENDA</div>
+        <div class="nav-add-btn" onclick="openOrderModal()"><i class="ph-bold ph-plus"></i></div>
+        <div class="nav-item" onclick="switchTab('pedidos', this)"><i class="ph-bold ph-bookmarks"></i>PEDIDOS</div>
+        <div class="nav-item" onclick="switchTab('config', this)"><i class="ph-bold ph-nut"></i>CONFIG</div>
+    </nav>
+
+    <div class="modal" id="order-modal">
+        <div class="modal-content">
+            <h2 style="margin-top:0">📝 Detalles del Pedido</h2>
+            <form id="order-form">
+                <input type="hidden" id="f-id">
+                <input type="text" id="f-cliente" placeholder="👤 Nombre del Cliente" required>
+                <input type="number" id="f-whatsapp" placeholder="📱 WhatsApp (ej. 987654321)">
+                <div style="display: flex; gap:10px"><input type="date" id="f-fecha" required><input type="time" id="f-hora" value="10:00"></div>
+                <textarea id="f-producto" placeholder="🍰 ¿Qué dulce es? (ej. Torta de Chocolate)" rows="2" required></textarea>
+                <div style="display: flex; gap:10px"><input type="number" id="f-total" placeholder="💰 Total" step="0.1"><input type="number" id="f-adelanto" placeholder="💸 Adelanto" step="0.1"></div>
+                <textarea id="f-nota" placeholder="📌 Notas extra (rellenos, temática...)" rows="2"></textarea>
+                <button type="submit" class="btn" style="background:var(--primary); color:white; width:100%; height:50px; justify-content:center; font-size:16px">✨ Guardar Pedido</button>
+                <button type="button" class="btn" onclick="toggleModal(false)" style="width:100%; margin-top:10px; justify-content:center">❌ Cerrar</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal" id="report-modal">
+        <div class="modal-content">
+            <h2 style="margin:0">📊 Reporte de Cobros</h2>
+            <p style="font-size:12px; color:gray">Lista de clientes con saldo pendiente.</p>
+            <div id="report-body"></div>
+            <button class="btn" onclick="document.getElementById('report-modal').classList.remove('active')" style="background:var(--text); color:white; width:100%; margin-top:20px; justify-content:center">Entendido 👍</button>
+        </div>
+    </div>
+
+    <script>
+        let pedidos = JSON.parse(localStorage.getItem('repostero_db')) || [];
+        let config = JSON.parse(localStorage.getItem('repostero_config')) || { currency: 'S/' };
+        let currentDate = new Date();
+        let selectedDateStr = new Date().toISOString().split('T')[0];
+        let historyVisible = false;
+
+        document.getElementById('conf-currency').value = config.currency;
+
+        function save() { 
+            localStorage.setItem('repostero_db', JSON.stringify(pedidos)); 
+            localStorage.setItem('repostero_config', JSON.stringify(config));
+            renderAll(); 
+        }
+
+        function toggleHistory() {
+            historyVisible = !historyVisible;
+            document.getElementById('list-history').classList.toggle('active', historyVisible);
+            document.getElementById('hist-icon').className = historyVisible ? 'ph-bold ph-caret-up' : 'ph-bold ph-caret-down';
+        }
+
+        function switchTab(viewId, el) {
+            document.querySelectorAll('main').forEach(m => m.style.display = 'none');
+            document.getElementById('view-' + viewId).style.display = 'block';
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            el.classList.add('active');
+            renderAll();
+        }
+
+        function showDebtReport() {
+            const debtors = pedidos.filter(p => !p.pagado);
+            const totalDebt = debtors.reduce((acc, p) => acc + (p.total - p.adelanto), 0);
+            
+            let html = `<table class="report-table">`;
+            debtors.forEach(p => {
+                html += `<tr><td><b>${p.cliente}</b></td><td style="text-align:right; color:var(--primary)">${config.currency}${(p.total - p.adelanto).toFixed(2)}</td></tr>`;
+            });
+            html += `<tr style="font-weight:800; border-top:2px solid var(--text)"><td>TOTAL PENDIENTE</td><td style="text-align:right">${config.currency}${totalDebt.toFixed(2)}</td></tr>`;
+            html += `</table>`;
+            
+            document.getElementById('report-body').innerHTML = debtors.length > 0 ? html : "<p style='text-align:center; padding:20px'>¡Felicidades! No tienes cobros pendientes. 🥳</p>";
+            document.getElementById('report-modal').classList.add('active');
+        }
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendar-grid');
+            const monthLabel = document.getElementById('calendar-month-year');
+            grid.innerHTML = '';
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            monthLabel.innerText = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric' }).format(currentDate);
+            ['Lu','Ma','Mi','Ju','Vi','Sá','Do'].forEach(d => grid.innerHTML += `<div class="weekday">${d}</div>`);
+            const firstDay = new Date(year, month, 1).getDay();
+            const startDay = firstDay === 0 ? 6 : firstDay - 1;
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const prevDaysInMonth = new Date(year, month, 0).getDate();
+            for(let i = startDay; i > 0; i--) grid.innerHTML += `<div class="day other-month">${prevDaysInMonth - i + 1}</div>`;
+            for(let i = 1; i <= daysInMonth; i++) {
+                const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+                const hasOrders = pedidos.some(p => p.fecha === dateStr && !(p.pagado && p.confirmado));
+                grid.innerHTML += `<div class="day ${hasOrders ? 'has-orders' : ''} ${dateStr === selectedDateStr ? 'selected' : ''} ${dateStr === new Date().toISOString().split('T')[0] ? 'today' : ''}" onclick="selectDate('${dateStr}')">${i}</div>`;
+            }
+        }
+
+        function selectDate(date) { selectedDateStr = date; renderCalendar(); renderAll(); }
+        function updateCurrency(val) { config.currency = val || 'S/'; save(); }
+        function toggleModal(s) { document.getElementById('order-modal').classList.toggle('active', s); }
+
+        function changeMonth(dir) {
+            currentDate.setMonth(currentDate.getMonth() + dir);
+            renderCalendar();
+        }
+
+        function renderAll() {
+            const hoy = new Date().toISOString().split('T')[0];
+            const cash = pedidos.filter(p => p.fecha === hoy && !p.pagado).reduce((acc, p) => acc + (p.total - p.adelanto), 0);
+            document.getElementById('cash-banner').innerText = `💰 COBRAS HOY: ${config.currency}${cash.toFixed(2)}`;
+            
+            const listHoy = pedidos.filter(p => p.fecha === hoy && !(p.pagado && p.confirmado));
+            document.getElementById('list-hoy').innerHTML = listHoy.map(p => cardTemplate(p)).join('') || '<p style="text-align:center; padding:30px; opacity:0.5">Sin entregas hoy 🌿</p>';
+            
+            renderCalendar();
+            const listAgenda = pedidos.filter(p => p.fecha === selectedDateStr && !(p.pagado && p.confirmado));
+            document.getElementById('list-agenda').innerHTML = listAgenda.map(p => cardTemplate(p)).join('') || '<p style="text-align:center; padding:30px; opacity:0.5">Día libre 🍰</p>';
+            
+            const q = document.getElementById('search-input').value.toLowerCase();
+            const filtered = pedidos.filter(p => p.cliente.toLowerCase().includes(q));
+            
+            document.getElementById('list-pending').innerHTML = filtered.filter(p => !(p.pagado && p.confirmado)).sort((a,b)=>a.fecha.localeCompare(b.fecha)).map(p => cardTemplate(p)).join('');
+            
+            const historyData = filtered.filter(p => p.pagado && p.confirmado);
+            document.getElementById('list-history').innerHTML = historyData.map(p => cardTemplate(p, true)).join('');
+            document.querySelector('.history-toggle span').innerText = `✅ VER HISTORIAL (${historyData.length})`;
+        }
+
+        function cardTemplate(p, isArchived = false) {
+            const pendiente = (p.total - p.adelanto).toFixed(2);
+            return `
+                <div class="order-card" style="${isArchived?'opacity:0.7':''}">
+                    <div onclick="openOrderModal(${p.id})">
+                        <div style="display:flex; justify-content:space-between">
+                            <h3 class="client-name">${p.cliente}</h3>
+                            <div class="status-badge ${p.pagado?'paid':'unpaid'}">${p.pagado?'PAGADO':'DEBE '+config.currency+pendiente}</div>
+                        </div>
+                        <p class="product-desc">${p.producto}</p>
+                        ${p.nota ? `<div class="note-box">📌 ${p.nota}</div>` : ''}
+                        <div style="font-size:12px; color:gray">🕒 ${p.hora} | 📅 ${p.fecha}</div>
+                    </div>
+                    <div class="actions">
+                        <button class="btn btn-wa" onclick="sendWA(${p.id})">📱 WhatsApp</button>
+                        <button class="btn btn-check ${p.pagado?'active':''}" onclick="toggleStatus(${p.id},'pagado')">${p.pagado?'✅':'💵'} Cobro</button>
+                        <button class="btn btn-check ${p.confirmado?'active':''}" onclick="toggleStatus(${p.id},'confirmado')">${p.confirmado?'📦':'👩‍🍳'} Listo</button>
+                        <button class="btn btn-delete" onclick="deleteOrder(${p.id})">🗑️</button>
+                    </div>
+                </div>`;
+        }
+
+        function toggleStatus(id, key) { const p = pedidos.find(x => x.id === id); p[key] = !p[key]; save(); }
+        function deleteOrder(id) { if(confirm("¿Eliminar permanentemente?")) { pedidos = pedidos.filter(x => x.id !== id); save(); } }
+        
+        function sendWA(id) {
+            const p = pedidos.find(x => x.id === id);
+            const pendiente = (p.total - p.adelanto).toFixed(2);
+            const msg = `¡Hola ${p.cliente}! ✨ Te saluda Repostero Pro. Confirmo tu pedido de: ${p.producto} para el día ${p.fecha} a las ${p.hora}. Saldo pendiente: ${config.currency}${pendiente}. ¡Muchas gracias! 🎂`;
+            window.open(`https://wa.me/51${p.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
+        }
+
+        function openOrderModal(id = null) {
+            document.getElementById('order-form').reset();
+            if(id) {
+                const p = pedidos.find(x => x.id === id);
+                document.getElementById('f-id').value = p.id;
+                document.getElementById('f-cliente').value = p.cliente;
+                document.getElementById('f-whatsapp').value = p.whatsapp;
+                document.getElementById('f-fecha').value = p.fecha;
+                document.getElementById('f-hora').value = p.hora;
+                document.getElementById('f-producto').value = p.producto;
+                document.getElementById('f-total').value = p.total;
+                document.getElementById('f-adelanto').value = p.adelanto;
+                document.getElementById('f-nota').value = p.nota || "";
+            } else {
+                document.getElementById('f-id').value = "";
+                document.getElementById('f-fecha').value = selectedDateStr;
+            }
+            toggleModal(true);
+        }
+
+        document.getElementById('order-form').onsubmit = function(e) {
+            e.preventDefault();
+            const id = document.getElementById('f-id').value;
+            const data = {
+                id: id ? parseInt(id) : Date.now(),
+                cliente: document.getElementById('f-cliente').value,
+                whatsapp: document.getElementById('f-whatsapp').value,
+                fecha: document.getElementById('f-fecha').value,
+                hora: document.getElementById('f-hora').value,
+                producto: document.getElementById('f-producto').value,
+                total: parseFloat(document.getElementById('f-total').value || 0),
+                adelanto: parseFloat(document.getElementById('f-adelanto').value || 0),
+                nota: document.getElementById('f-nota').value,
+                pagado: id ? pedidos.find(x=>x.id==id).pagado : false,
+                confirmado: id ? pedidos.find(x=>x.id==id).confirmado : false
+            };
+            if(id) pedidos = pedidos.map(x => x.id == id ? data : x);
+            else pedidos.push(data);
+            save(); toggleModal(false);
+        };
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(pedidos));
+            const dl = document.createElement('a');
+            dl.setAttribute("href", dataStr);
+            dl.setAttribute("download", "repostero_backup.json");
+            dl.click();
+        }
+
+        function importData(e) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                pedidos = JSON.parse(event.target.result);
+                save();
+                alert("¡Datos cargados!");
+            };
+            reader.readAsText(e.target.files[0]);
+        }
+
+        function clearData() { if(confirm("¿BORRAR TODO?")) { pedidos = []; config = { currency: 'S/' }; save(); location.reload(); } }
+
+        renderAll();
+    </script>
+</body>
+</html>
