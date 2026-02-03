@@ -36,7 +36,7 @@
             box-shadow: 0 4px 20px rgba(0,0,0,0.03);
         }
         
-        h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px; background: linear-gradient(45deg, var(--text), var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        h1 { margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px; background: linear-gradient(45deg, var(--text), var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-transform: uppercase; }
         .cash-summary { color: var(--warning); font-weight: 700; font-size: 15px; margin-top: 6px; }
 
         .calendar-container { 
@@ -108,7 +108,6 @@
         .modal-content { background: white; width: 100%; max-width: 450px; border-radius: 30px; padding: 25px; max-height: 90vh; overflow-y: auto; }
         input, textarea { width: 100%; background: #f8fafc; border: 1px solid #e2e8f0; padding: 14px; border-radius: 14px; margin-bottom: 10px; font-size: 16px; }
 
-        /* Reporte Styles */
         .report-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         .report-table td { padding: 10px; border-bottom: 1px solid #eee; font-size: 14px; }
     </style>
@@ -116,7 +115,7 @@
 <body>
 
     <header>
-        <h1>🎂 REPOSTERO PRO</h1>
+        <h1 id="brand-name">🎂 REPOSTERO PRO</h1>
         <div class="cash-summary" id="cash-banner">💰 COBRAS HOY: S/ 0.00</div>
     </header>
 
@@ -152,7 +151,10 @@
     <main id="view-config" style="display:none;">
         <div class="section-title">⚙️ CONFIGURACIÓN</div>
         <div style="padding: 20px;">
-            <label style="display:block; margin-bottom: 5px; font-weight: 700; font-size: 14px;">💱 Símbolo de Moneda:</label>
+            <label style="display:block; margin-bottom: 5px; font-weight: 700; font-size: 14px;">📛 Nombre del Emprendimiento:</label>
+            <input type="text" id="conf-name" placeholder="Ej: Las Delicias de Ana" oninput="updateBrand(this.value)">
+
+            <label style="display:block; margin-top:15px; margin-bottom: 5px; font-weight: 700; font-size: 14px;">💱 Símbolo de Moneda:</label>
             <input type="text" id="conf-currency" placeholder="Ej: S/ o $" oninput="updateCurrency(this.value)">
             
             <button class="btn" onclick="showDebtReport()" style="background:var(--info); color:white; width:100%; height:50px; justify-content:center; margin: 20px 0;">📊 Generar Reporte de Cobros</button>
@@ -180,11 +182,11 @@
             <form id="order-form">
                 <input type="hidden" id="f-id">
                 <input type="text" id="f-cliente" placeholder="👤 Nombre del Cliente" required>
-                <input type="number" id="f-whatsapp" placeholder="📱 WhatsApp (ej. 987654321)">
+                <input type="number" id="f-whatsapp" placeholder="📱 WhatsApp">
                 <div style="display: flex; gap:10px"><input type="date" id="f-fecha" required><input type="time" id="f-hora" value="10:00"></div>
-                <textarea id="f-producto" placeholder="🍰 ¿Qué dulce es? (ej. Torta de Chocolate)" rows="2" required></textarea>
+                <textarea id="f-producto" placeholder="🍰 ¿Qué dulce es?" rows="2" required></textarea>
                 <div style="display: flex; gap:10px"><input type="number" id="f-total" placeholder="💰 Total" step="0.1"><input type="number" id="f-adelanto" placeholder="💸 Adelanto" step="0.1"></div>
-                <textarea id="f-nota" placeholder="📌 Notas extra (rellenos, temática...)" rows="2"></textarea>
+                <textarea id="f-nota" placeholder="📌 Notas extra..." rows="2"></textarea>
                 <button type="submit" class="btn" style="background:var(--primary); color:white; width:100%; height:50px; justify-content:center; font-size:16px">✨ Guardar Pedido</button>
                 <button type="button" class="btn" onclick="toggleModal(false)" style="width:100%; margin-top:10px; justify-content:center">❌ Cerrar</button>
             </form>
@@ -194,7 +196,6 @@
     <div class="modal" id="report-modal">
         <div class="modal-content">
             <h2 style="margin:0">📊 Reporte de Cobros</h2>
-            <p style="font-size:12px; color:gray">Lista de clientes con saldo pendiente.</p>
             <div id="report-body"></div>
             <button class="btn" onclick="document.getElementById('report-modal').classList.remove('active')" style="background:var(--text); color:white; width:100%; margin-top:20px; justify-content:center">Entendido 👍</button>
         </div>
@@ -202,18 +203,29 @@
 
     <script>
         let pedidos = JSON.parse(localStorage.getItem('repostero_db')) || [];
-        let config = JSON.parse(localStorage.getItem('repostero_config')) || { currency: 'S/' };
+        let config = JSON.parse(localStorage.getItem('repostero_config')) || { currency: 'S/', brand: '🎂 REPOSTERO PRO' };
         let currentDate = new Date();
         let selectedDateStr = new Date().toISOString().split('T')[0];
         let historyVisible = false;
 
+        // Inicializar Config
         document.getElementById('conf-currency').value = config.currency;
+        document.getElementById('conf-name').value = config.brand;
+        document.getElementById('brand-name').innerText = config.brand;
 
         function save() { 
             localStorage.setItem('repostero_db', JSON.stringify(pedidos)); 
             localStorage.setItem('repostero_config', JSON.stringify(config));
             renderAll(); 
         }
+
+        function updateBrand(val) {
+            config.brand = val || '🎂 REPOSTERO PRO';
+            document.getElementById('brand-name').innerText = config.brand;
+            save();
+        }
+
+        function updateCurrency(val) { config.currency = val || 'S/'; save(); }
 
         function toggleHistory() {
             historyVisible = !historyVisible;
@@ -232,16 +244,19 @@
         function showDebtReport() {
             const debtors = pedidos.filter(p => !p.pagado);
             const totalDebt = debtors.reduce((acc, p) => acc + (p.total - p.adelanto), 0);
-            
             let html = `<table class="report-table">`;
             debtors.forEach(p => {
                 html += `<tr><td><b>${p.cliente}</b></td><td style="text-align:right; color:var(--primary)">${config.currency}${(p.total - p.adelanto).toFixed(2)}</td></tr>`;
             });
             html += `<tr style="font-weight:800; border-top:2px solid var(--text)"><td>TOTAL PENDIENTE</td><td style="text-align:right">${config.currency}${totalDebt.toFixed(2)}</td></tr>`;
             html += `</table>`;
-            
-            document.getElementById('report-body').innerHTML = debtors.length > 0 ? html : "<p style='text-align:center; padding:20px'>¡Felicidades! No tienes cobros pendientes. 🥳</p>";
+            document.getElementById('report-body').innerHTML = debtors.length > 0 ? html : "<p style='text-align:center; padding:20px'>¡Sin cobros pendientes! 🥳</p>";
             document.getElementById('report-modal').classList.add('active');
+        }
+
+        function changeMonth(dir) {
+            currentDate.setMonth(currentDate.getMonth() + dir);
+            renderCalendar();
         }
 
         function renderCalendar() {
@@ -265,31 +280,20 @@
         }
 
         function selectDate(date) { selectedDateStr = date; renderCalendar(); renderAll(); }
-        function updateCurrency(val) { config.currency = val || 'S/'; save(); }
         function toggleModal(s) { document.getElementById('order-modal').classList.toggle('active', s); }
-
-        function changeMonth(dir) {
-            currentDate.setMonth(currentDate.getMonth() + dir);
-            renderCalendar();
-        }
 
         function renderAll() {
             const hoy = new Date().toISOString().split('T')[0];
             const cash = pedidos.filter(p => p.fecha === hoy && !p.pagado).reduce((acc, p) => acc + (p.total - p.adelanto), 0);
             document.getElementById('cash-banner').innerText = `💰 COBRAS HOY: ${config.currency}${cash.toFixed(2)}`;
-            
             const listHoy = pedidos.filter(p => p.fecha === hoy && !(p.pagado && p.confirmado));
             document.getElementById('list-hoy').innerHTML = listHoy.map(p => cardTemplate(p)).join('') || '<p style="text-align:center; padding:30px; opacity:0.5">Sin entregas hoy 🌿</p>';
-            
             renderCalendar();
             const listAgenda = pedidos.filter(p => p.fecha === selectedDateStr && !(p.pagado && p.confirmado));
             document.getElementById('list-agenda').innerHTML = listAgenda.map(p => cardTemplate(p)).join('') || '<p style="text-align:center; padding:30px; opacity:0.5">Día libre 🍰</p>';
-            
             const q = document.getElementById('search-input').value.toLowerCase();
             const filtered = pedidos.filter(p => p.cliente.toLowerCase().includes(q));
-            
             document.getElementById('list-pending').innerHTML = filtered.filter(p => !(p.pagado && p.confirmado)).sort((a,b)=>a.fecha.localeCompare(b.fecha)).map(p => cardTemplate(p)).join('');
-            
             const historyData = filtered.filter(p => p.pagado && p.confirmado);
             document.getElementById('list-history').innerHTML = historyData.map(p => cardTemplate(p, true)).join('');
             document.querySelector('.history-toggle span').innerText = `✅ VER HISTORIAL (${historyData.length})`;
@@ -323,7 +327,7 @@
         function sendWA(id) {
             const p = pedidos.find(x => x.id === id);
             const pendiente = (p.total - p.adelanto).toFixed(2);
-            const msg = `¡Hola ${p.cliente}! ✨ Te saluda Repostero Pro. Confirmo tu pedido de: ${p.producto} para el día ${p.fecha} a las ${p.hora}. Saldo pendiente: ${config.currency}${pendiente}. ¡Muchas gracias! 🎂`;
+            const msg = `¡Hola ${p.cliente}! ✨ Te saluda ${config.brand}. Confirmo tu pedido de: ${p.producto} para el día ${p.fecha} a las ${p.hora}. Saldo pendiente: ${config.currency}${pendiente}. ¡Muchas gracias! 🎂`;
             window.open(`https://wa.me/51${p.whatsapp}?text=${encodeURIComponent(msg)}`, '_blank');
         }
 
@@ -386,7 +390,7 @@
             reader.readAsText(e.target.files[0]);
         }
 
-        function clearData() { if(confirm("¿BORRAR TODO?")) { pedidos = []; config = { currency: 'S/' }; save(); location.reload(); } }
+        function clearData() { if(confirm("¿BORRAR TODO?")) { pedidos = []; config = { currency: 'S/', brand: '🎂 REPOSTERO PRO' }; save(); location.reload(); } }
 
         renderAll();
     </script>
